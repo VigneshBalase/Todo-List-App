@@ -1,0 +1,141 @@
+/* Base Styles */
+.header {
+  background-color: #18283b;
+  padding: 15px 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-radius: 16px;
+}
+
+
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 20px;
+  position: relative;
+}
+
+.header-spacer {
+  width: 100px; /* Matches icons container width */
+}
+
+.search-bar {
+  display: flex;
+  width: 100%;
+  max-width: 400px; /* Restrict the width of the search bar */
+}
+
+.search-bar input {
+  width: 110%;
+  height:100%;
+  padding: 10px 15px;
+  border: 1px solid #2c3e50; /* Dark border */
+  border-radius: 25px 0 0 25px;
+  outline: none;
+  background-color: #2c3e50; /* Dark background */
+  color: #f5f6fa; /* Light text color */
+}
+
+/* Remove the white box on focus or hover */
+.search-bar input:focus {
+  border: 1px solid #9c88ff; /* Optional: Change border color when focused */
+  box-shadow: none; /* Removes default focus box-shadow */
+}
+
+.search-bar input::placeholder {
+  color: #8392a5; /* Lighter placeholder text */
+}
+
+.search-button {
+  padding: 0 15px;
+  background-color: #9c88ff;
+  border: none;
+  border-radius: 0 25px 25px 0;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  color: white; /* Ensures the search icon is visible */
+}
+
+.search-button:hover {
+  background-color: #8c7ae6;
+}
+
+/* Icons */
+.icons {
+  display: flex;
+  gap: 20px;
+  width: 120px;
+  justify-content: flex-end;
+}
+
+.icon-link {
+  color: #f5f6fa;
+  font-size: 18px;
+  transition: color 0.3s;
+}
+
+.icon-link:hover {
+  color: #9c88ff;
+}
+
+.cart-icon {
+  position: relative;
+}
+
+.cart-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #ff6b6b;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .header-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .header-spacer {
+    display: none;
+  }
+
+  .search-container {
+    position: static;
+    transform: none;
+    width: 100%;
+    order: 2;
+    margin: 10px 0;
+  }
+
+  .icons {
+    order: 1;
+    width: 100%;
+    justify-content: flex-end;
+    padding-right: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-container {
+    min-width: 100%;
+  }
+
+  .search-bar input {
+    padding: 8px 12px;
+  }
+}
