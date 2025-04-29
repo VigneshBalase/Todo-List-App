@@ -37,55 +37,48 @@ Edit
    git clone <repository-url>
    cd <repository-name>/client
 Install Dependencies:
-
-bash
-Copy
-Edit
+```
 npm install
-Start the Application:
+```
 
-bash
-Copy
-Edit
+Start the Application:
+```
 npm start
+```
+
+
 Open the app in your browser:
+```
 http://localhost:3000
+```
 
 Server Side Setup
 Navigate to Server Folder:
 
-bash
-Copy
-Edit
+
 cd <repository-name>/server
 Install Dependencies:
 
-bash
-Copy
-Edit
+```
 npm install
+```
 Create .env File: Add your environment variables:
 
-ini
-Copy
-Edit
+```bash
 MONGO_URI=mongodb://localhost:27017/todo-app
 JWT_SECRET=your_jwt_secret_key
 PORT=5000
+```
 Run the Server:
 
 For development:
-
-bash
-Copy
-Edit
+```
 npm run dev
+```
 For production:
-
-bash
-Copy
-Edit
+```
 npm start
+```
 ✅ Assumptions & Design Decisions
 Built as a Single Page Application (SPA) for smooth navigation.
 
@@ -114,18 +107,17 @@ MongoDB running locally or using a cloud MongoDB URI
 Create .env in server/ folder with required variables
 
 🧪 Testing & Build Commands
+
+
 Client
 Run tests:
 
-bash
-Copy
-Edit
+```
 npm test
+```
 Build for production:
-
-bash
-Copy
-Edit
+```
 npm run build
+```
 Server
 No separate test setup added yet — to be integrated.
