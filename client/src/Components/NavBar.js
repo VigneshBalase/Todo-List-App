@@ -9,19 +9,43 @@ import {
   faFilter
 } from '@fortawesome/free-solid-svg-icons';
 import '../css/navBar.css';
+import { jwtDecode } from 'jwt-decode'; // Import jwtDecode
 
 const Sidebar = ({ onPriorityFilter, onTagFilter }) => {
   const [activePriority, setActivePriority] = useState(null);
   const [activeTag, setActiveTag] = useState(null);
   const [priorities, setPriorities] = useState([]);
   const [tags, setTags] = useState([]);
-  const userId = localStorage.getItem('userId');
-  const [userName, setUserName] = useState('Guest');
+  const [userName, setUserName] = useState('Guest'); // Initial state
 
   useEffect(() => {
-    const storedUsername = localStorage.getItem('username');
-    if (storedUsername) setUserName(storedUsername);
-  }, []);
+    // Retrieve token from localStorage
+    const token = localStorage.getItem('token');
+
+    if (token) {
+      try {
+        // Decode the token to get user information
+        const decoded = jwtDecode(token);
+        // Set the username from the decoded token
+        setUserName(decoded.username || decoded.name || 'User'); // Use username or name from token
+        // Store userId from token in localStorage (optional, but good practice if needed elsewhere)
+        localStorage.setItem('userId', decoded.id);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+        // Handle invalid or expired token, e.g., clear localStorage and redirect to login
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('username'); // Also remove username if it was stored separately
+        setUserName('Guest'); // Reset username
+        // Optionally redirect to login page
+      }
+    } else {
+      // If no token is found, ensure userId and username are also cleared
+      localStorage.removeItem('userId');
+      localStorage.removeItem('username');
+      setUserName('Guest'); // Reset username
+    }
+  }, []); // Empty dependency array means this runs once on mount
 
   useEffect(() => {
     const fetchPriorities = () => {
@@ -43,30 +67,15 @@ const Sidebar = ({ onPriorityFilter, onTagFilter }) => {
 
     fetchPriorities();
     fetchTags();
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await axios.get('http://localhost:5000/api/v1/users');
-        const matchedUser = res.data.users.find(user => user._id === userId);
-        if (matchedUser) {
-          setUserName(matchedUser.username || matchedUser.name);
-        }
-      } catch (err) {
-        console.error('Error fetching users:', err);
-      }
-    };
-
-    if (userId) {
-      fetchUsers();
-    }
-  }, [userId]);
+  // Removed the useEffect that fetches all users
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    window.location.href = '/';
+    localStorage.removeItem('username'); // Ensure username is removed
+    localStorage.removeItem('userId'); // Ensure userId is removed
+    window.location.href = '/'; // Redirect to home/login page
   };
 
   const calculateHighlightPosition = (type, label) => {
@@ -180,6 +189,7 @@ const Sidebar = ({ onPriorityFilter, onTagFilter }) => {
             />
           </div>
           <div id="nav-footer-titlebox">
+            {/* Display the userName state */}
             <a id="nav-footer-title" href="#">{userName}</a>
             <button onClick={handleLogout} className="logout-btn">
               Logout

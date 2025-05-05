@@ -10,15 +10,15 @@ const {
 
 const router = express.Router();
 
-router.get('/todo', getTodos); // No `protect` middleware here
+router.use(protect);
 
 router.route('/')
-  .get(protect, getTodos)
-  .post(protect, createTodo);
+  .get(getTodos)
+  .post(createTodo);
 
 router.route('/:id')
-  .get(protect, getTodo)
-  .put(protect, updateTodo)
-  .delete(protect, deleteTodo)
-  .patch(protect, updateTodo);
+  .get(getTodo)
+  .patch(updateTodo)
+  .delete(deleteTodo);
+
 module.exports = router;

@@ -44,7 +44,7 @@ const SignUpSignIn = () => {
       alert('Registration successful! Please sign in.');
       setIsRightPanelActive(false);
       setSignUpData({ name: '', email: '', password: '' });
-      navigate('/home'); // Redirect to Home after sign-up
+      navigate('/home'); // Redirect to Home after sign-up - **Note: This redirect might be unexpected if the user is supposed to sign in after registering.**
     } catch (error) {
       alert(error.response?.data?.message || 'Registration failed. Please try again.');
     }
@@ -57,22 +57,24 @@ const SignUpSignIn = () => {
         email: signInData.email,
         password: signInData.password,
       });
-  
+
       // 1. Store the token
       localStorage.setItem('token', response.data.token);
-  
+
       const decoded = jwtDecode(response.data.token);
         console.log('Decoded JWT:', decoded);
 
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('userId', decoded.id); 
-  
+        localStorage.setItem('token', response.data.token); // **Note: This line is a duplicate.**
+        localStorage.setItem('userId', decoded.id);
+
       alert('Login successful!');
       navigate('/home');
     } catch (error) {
       alert(error.response?.data?.message || 'Login failed. Please try again.');
     }
   };
+
+
 
   return (
     <div className="body">

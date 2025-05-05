@@ -4,7 +4,7 @@ import '../css/card.css';
 import '../css/cardModal.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPenToSquare, faCheckCircle, faTrash } from '@fortawesome/free-solid-svg-icons';
-import Header from './Header'; // Make sure to import the Header component
+import Header from './Header';
 import Sidebar from './NavBar';
 
 const ProfileHover = () => {
@@ -20,20 +20,19 @@ const ProfileHover = () => {
   const [activeTagFilter, setActiveTagFilter] = useState(null);
 
 
-  const filteredTodos = todos.filter(todo => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      todo.title.toLowerCase().includes(searchLower) ||
-      (todo.description && todo.description.toLowerCase().includes(searchLower)) ||
-      (todo.tags && todo.tags.some(tag => tag.toLowerCase().includes(searchLower))) ||
-      (todo.mentionedUsers &&
-        todo.mentionedUsers.some(userId =>
-          userMap[userId] && userMap[userId].toLowerCase().includes(searchLower)
-        ))
-    );
-  });
-  
+  // Get token from localStorage
+  const token = localStorage.getItem('token');
+  //  let createdBy = null;
+  //  if (token) {
+  //    try {
+  //      const decoded = jwtDecode(token);
+  //      createdBy = decoded.id;
+  //    } catch (error) {
+  //      console.error('Error decoding token:', error);
+  //      // Handle invalid token, e.g., redirect to login
+  //    }
+  //  }
+
 
   const handleSearch = (term) => {
     setSearchTerm(term);
@@ -41,9 +40,17 @@ const ProfileHover = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!token) {
+        setError('Authentication required');
+        setLoading(false);
+        return;
+      }
+
       try {
         // Fetch all users first
-        const usersResponse = await axios.get('http://localhost:5000/api/v1/users/');
+        const usersResponse = await axios.get('http://localhost:5000/api/v1/users/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         
         if (!usersResponse.data.success) {
           throw new Error('Failed to fetch users');
@@ -52,13 +59,17 @@ const ProfileHover = () => {
         // Create mapping of user IDs to usernames
         const userData = {};
         usersResponse.data.data.forEach(user => {
-          userData[user._id] = user.username;
+          if (user._id && user.username) {  // Add validation
+            userData[user._id] = user.username;
+          }
         });
         setUserMap(userData);
         setAllUsers(usersResponse.data.data);
 
         // Then fetch todos
-        const todoResponse = await axios.get('http://localhost:5000/api/v1/todos/todo');
+        const todoResponse = await axios.get('http://localhost:5000/api/v1/todos', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         
         if (!todoResponse.data.success) {
           throw new Error('Failed to fetch todos');
@@ -74,7 +85,7 @@ const ProfileHover = () => {
     };
 
     fetchData();
-  }, []);
+  }, [token]);
 
   let baseFilteredTodos = todos.filter(todo => {
     const searchLower = searchTerm.toLowerCase();
@@ -85,7 +96,8 @@ const ProfileHover = () => {
       (todo.mentionedUsers &&
         todo.mentionedUsers.some(userId =>
           userMap[userId] && userMap[userId].toLowerCase().includes(searchLower)
-        ))
+        )
+      ) 
     );
   });
   
@@ -101,15 +113,14 @@ const ProfileHover = () => {
     );
   }
 
-
   const handlePriorityFilter = (priority) => {
     setActivePriorityFilter(priority);
-    setActiveTagFilter(null); // Clear tag when priority is selected
+    setActiveTagFilter(null);
   };
 
   const handleTagFilter = (tag) => {
     setActiveTagFilter(tag);
-    setActivePriorityFilter(null); // Clear priority when tag is selected
+    setActivePriorityFilter(null);
   };
 
   const handleUpdate = (todo) => {
@@ -118,9 +129,12 @@ const ProfileHover = () => {
   };
 
   const handleComplete = async (todoId) => {
+    if (!token) {
+      alert('Authentication required');
+      return;
+    }
+
     try {
-      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4MGY5YzBmMmJmODgzYjM2ZTA3YmViYyIsImlhdCI6MTc0NTkxNzI3OSwiZXhwIjoxNzQ4NTA5Mjc5fQ.5MxYozNKwnfQl8IdbJyc3Pl1F3zrc8L7TpDZ1X-kQwg";
-  
       const response = await axios.patch(
         `http://localhost:5000/api/v1/todos/${todoId}`,
         { status: 'completed' },
@@ -145,12 +159,23 @@ const ProfileHover = () => {
   };
 
   const handleUpdateSubmit = async (updatedData) => {
+    if (!token) {
+      alert('Authentication required');
+      return;
+    }
+  
     try {
-      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4MGY5YzBmMmJmODgzYjM2ZTA3YmViYyIsImlhdCI6MTc0NTkxNzI3OSwiZXhwIjoxNzQ4NTA5Mjc5fQ.5MxYozNKwnfQl8IdbJyc3Pl1F3zrc8L7TpDZ1X-kQwg";
-      
+      // Ensure mentionedUsers is in the correct format (array of IDs)
+      const dataToSend = {
+        ...updatedData,
+        mentionedUsers: updatedData.mentionedUsers.map(user => 
+          typeof user === 'object' ? user._id : user
+        )
+      };
+  
       const response = await axios.patch(
         `http://localhost:5000/api/v1/todos/${currentTodo._id}`,
-        updatedData,
+        dataToSend,
         {
           headers: {
             'Content-Type': 'application/json',
@@ -167,17 +192,61 @@ const ProfileHover = () => {
         alert('Task updated successfully!');
       }
     } catch (err) {
-      console.error('Update error:', err.response?.data || err.message);
+      console.error('Update error:', err);
       alert(`Update failed: ${err.response?.data?.message || err.message}`);
     }
   };
+
+  const handleRemoveUserFromDb = async (todoId, userId) => {
+    if (!token) {
+      alert('Authentication required');
+      return;
+    }
+  
+    try {
+      const currentTodo = todos.find(todo => todo._id === todoId);
+      if (!currentTodo) return;
+  
+      // Convert all mentioned users to IDs first for consistent comparison
+      const updatedMentionedUsers = currentTodo.mentionedUsers
+        .map(user => typeof user === 'object' ? user._id : user)
+        .filter(id => id !== userId);
+  
+      const response = await axios.patch(
+        `http://localhost:5000/api/v1/todos/${todoId}`,
+        { mentionedUsers: updatedMentionedUsers },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+  
+      if (response.data.success) {
+        setTodos(todos.map(todo =>
+          todo._id === todoId ? {
+            ...response.data.data,
+            mentionedUsers: updatedMentionedUsers // Ensure consistent format
+          } : todo
+        ));
+      }
+    } catch (err) {
+      console.error('Error removing user:', err.response?.data || err.message);
+      alert(`Failed to remove user: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+ 
   
   const handleDelete = async (todoId) => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
+    if (!token) {
+      alert('Authentication required');
+      return;
+    }
     
     try {
-      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4MGY5YzBmMmJmODgzYjM2ZTA3YmViYyIsImlhdCI6MTc0NTkxNzI3OSwiZXhwIjoxNzQ4NTA5Mjc5fQ.5MxYozNKwnfQl8IdbJyc3Pl1F3zrc8L7TpDZ1X-kQwg";
-      
       await axios.delete(
         `http://localhost:5000/api/v1/todos/${todoId}`,
         {
@@ -200,18 +269,22 @@ const ProfileHover = () => {
 
   return (
     <>
-    <Sidebar onPriorityFilter={handlePriorityFilter} onTagFilter={handleTagFilter} />
+      <Sidebar onPriorityFilter={handlePriorityFilter} onTagFilter={handleTagFilter} />
       <Header onSearch={handleSearch} />
       <div className="card-container">
         {baseFilteredTodos.map((todo) => (
-          <div key={todo._id} className="img-wrapper">
+          <div key={todo._id} className={`img-wrapper ${todo.status === 'completed' ? 'completed-task' : ''}`}>
             <h2>{todo.title}</h2>
             
             <ul className="side-icons">
               <li title="Update" onClick={() => handleUpdate(todo)}>
                 <FontAwesomeIcon icon={faPenToSquare} />
               </li>
-              <li title="Complete" onClick={() => handleComplete(todo._id)}>
+              <li 
+                title="Complete" 
+                className="complete-btn"
+                onClick={() => handleComplete(todo._id)}
+              >
                 <FontAwesomeIcon icon={faCheckCircle} />
               </li>
             </ul>
@@ -226,7 +299,7 @@ const ProfileHover = () => {
               {todo.tags && todo.tags.length > 0 && (
                 <div className="tags">
                   {todo.tags.map((tag, index) => (
-                    <span key={index} className="tag-item">
+                    <span key={tag} className="tag-item">
                       {tag}
                     </span>
                   ))}
@@ -237,22 +310,27 @@ const ProfileHover = () => {
                 <div className="mentions-container">
                   <span className="mention-label">Mentions:</span>
                   {todo.mentionedUsers
-                    .filter(userId => userMap[userId])
-                    .map(userId => (
-                      <span key={userId} className="user-mention">
-                        @{userMap[userId]}
-                      </span>
-                    ))
+                    .map(userId => {
+                      // Convert to string if it's an object
+                      const id = typeof userId === 'object' ? userId._id || JSON.stringify(userId) : userId;
+                      const username = userMap[id];
+                      return username ? (
+                        <span key={`mention-${id}`} className="user-mention">
+                          @{username}
+                        </span>
+                      ) : null;
+                    })
+                    .filter(Boolean) // Remove any null entries
                   }
                 </div>
               )}
-              
+                            
               {todo.notes && todo.notes.length > 0 && (
                 <div className="notes-section">
                   <strong>Notes:</strong>
                   <ul>
-                    {todo.notes.map((note, index) => (
-                      <li key={index}>
+                    {todo.notes.map((note) => (
+                      <li key={`note-${note._id || note.content?.substring(0, 20)}`}>
                         {note.content || 'No content'}
                       </li>
                     ))}
@@ -274,33 +352,42 @@ const ProfileHover = () => {
           allUsers={allUsers}
           onClose={() => setShowUpdateModal(false)}
           onSubmit={handleUpdateSubmit}
+          onRemoveUser={handleRemoveUserFromDb}
         />
       )}
     </>
   );
 };
 
-const UpdateCardPopup = ({ todo, allUsers, onClose, onSubmit }) => {
+const UpdateCardPopup = ({ todo, allUsers, onClose, onSubmit, onRemoveUser }) => {
   const [title, setTitle] = useState(todo?.title || '');
   const [description, setDescription] = useState(todo?.description || '');
   const [priority, setPriority] = useState(todo?.priority || 'Medium');
   const [tags, setTags] = useState(todo?.tags || []);
   const [tagInput, setTagInput] = useState('');
-  const [mentionedUsers, setMentionedUsers] = useState(todo?.mentionedUsers || []);
+  const [mentionedUsers, setMentionedUsers] = useState(
+    todo?.mentionedUsers 
+      ? todo.mentionedUsers.map(user => typeof user === 'object' ? user._id : user)
+      : []
+  );
   const [note, setNote] = useState(todo?.notes?.[0]?.content || '');
   const [selectedUser, setSelectedUser] = useState('');
 
   const handleAddTag = () => {
-    if (tagInput.trim()) {
-      setTags([...tags, tagInput.trim()]);
+    const trimmedTag = tagInput.trim();
+    if (trimmedTag && !tags.includes(trimmedTag)) {  // Prevent duplicate tags
+      setTags([...tags, trimmedTag]);
       setTagInput('');
     }
   };
 
   const handleAddUser = () => {
-    if (selectedUser && !mentionedUsers.includes(selectedUser)) {
+    if (selectedUser && !mentionedUsers.some(userId => userId === selectedUser)) {
       setMentionedUsers([...mentionedUsers, selectedUser]);
       setSelectedUser('');
+    } else {
+      // Optional: Show feedback that user is already mentioned
+      alert('This user is already mentioned in the task');
     }
   };
 
@@ -308,8 +395,8 @@ const UpdateCardPopup = ({ todo, allUsers, onClose, onSubmit }) => {
     setMentionedUsers(mentionedUsers.filter(id => id !== userId));
   };
 
-  const handleRemoveTag = (index) => {
-    setTags(tags.filter((_, i) => i !== index));
+  const handleRemoveTag = (tagToRemove) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
   const handleSubmit = () => {
@@ -398,10 +485,14 @@ const UpdateCardPopup = ({ todo, allUsers, onClose, onSubmit }) => {
           </div>
           {tags.length > 0 && (
             <div className="tag-list">
-              {tags.map((tag, index) => (
-                <span key={index} className="tag">
+              {tags.map((tag) => (
+                <span key={`tag-${tag}`} className="tag">  
                   {tag}
-                  <button type="button" onClick={() => handleRemoveTag(index)}>
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveTag(tag)}
+                    aria-label={`Remove tag ${tag}`}
+                  >
                     ×
                   </button>
                 </span>
@@ -411,45 +502,69 @@ const UpdateCardPopup = ({ todo, allUsers, onClose, onSubmit }) => {
         </div>
 
         <div className="form-group">
-          <label>Mention Team Members</label>
-          <div className="user-select-container">
-            <select 
-              value={selectedUser} 
-              onChange={(e) => setSelectedUser(e.target.value)}
-              className="user-select"
-            >
-              <option value="">Select a team member...</option>
-              {allUsers.map((user) => (
-                <option key={user._id} value={user._id}>
-                  {user.username} ({user.email})
-                </option>
-              ))}
-            </select>
-            <button type="button" onClick={handleAddUser} className="add-button" disabled={!selectedUser}>
-              Add
-            </button>
-          </div>
-          {mentionedUsers.length > 0 && (
-            <div className="user-list">
-              {mentionedUsers.map((userId) => {
-                const user = allUsers.find((u) => u._id === userId);
-                return (
-                  <div key={userId} className="user-chip">
-                    <span className="user-avatar">{user?.username.charAt(0).toUpperCase()}</span>
-                    <span className="user-name">{user?.username}</span>
-                    <button 
-                      type="button" 
-                      onClick={() => handleRemoveUser(userId)}
-                      className="remove-user-btn"
-                    >
-                      ×
-                    </button>
-                  </div>
-                );
-              })}
+  <label>Mention Team Members</label>
+  <div className="user-select-container">
+    <select 
+      value={selectedUser} 
+      onChange={(e) => setSelectedUser(e.target.value)}
+      className="user-select"
+    >
+      <option value="">Select a team member...</option>
+      {allUsers
+        .filter(user => !mentionedUsers.some(u => u._id === user._id)) // Only show non-mentioned users
+        .map((user) => (
+          <option key={user._id} value={user._id}>
+            {user.username} ({user.email})
+          </option>
+        ))}
+    </select>
+    <button 
+      type="button" 
+      onClick={handleAddUser} 
+      className="add-button" 
+      disabled={!selectedUser}
+    >
+      Add
+    </button>
+  </div>
+  
+  {mentionedUsers.length > 0 && (
+    <div className="user-mentions-display">
+      <h4>Currently Mentioned:</h4>
+      <div className="mentioned-users-list">
+        {mentionedUsers.map(user => {
+          // Handle both string IDs and full user objects
+          const userId = typeof user === 'object' ? user._id : user;
+          const userObj = allUsers.find(u => u._id === userId) || {};
+          
+          return (
+            <div key={`mentioned-${userId}`} className="mentioned-user-item">
+              <span className="user-info">
+                <span className="user-avatar">
+                  {userObj.username?.charAt(0).toUpperCase() || '?'}
+                </span>
+                <span className="user-name">
+                  {userObj.username || 'Unknown user'}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  handleRemoveUser(userId);
+                  onRemoveUser(todo._id, userId); // Call the removal API
+                }}
+                className="remove-mention-btn"
+                aria-label={`Remove mention of ${userObj.username}`}
+              >
+                ×
+              </button>
             </div>
-          )}
-        </div>
+          );
+        })}
+      </div>
+    </div>
+  )}
+</div>
 
         <div className="form-group">
           <label>Notes</label>
